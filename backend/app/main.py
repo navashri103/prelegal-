@@ -24,10 +24,14 @@ from app.auth import (
     require_user,
 )
 from app.chat import (
+    DISCOVERY_GREETING,
     ChatConfigError,
     ChatRequest,
     ChatResponse,
     ChatUpstreamError,
+    DiscoverRequest,
+    DiscoverResponse,
+    discover_document,
     get_chat_reply,
     greeting_for,
 )
@@ -97,6 +101,21 @@ def chat_greeting(template_id: str) -> ChatResponse:
 def chat_message(template_id: str, request: ChatRequest) -> ChatResponse:
     try:
         return get_chat_reply(template_id, request)
+    except ChatConfigError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except ChatUpstreamError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+
+@app.get("/api/discover/greeting")
+def discover_greeting() -> DiscoverResponse:
+    return DiscoverResponse(reply=DISCOVERY_GREETING)
+
+
+@app.post("/api/discover/message")
+def discover_message(request: DiscoverRequest) -> DiscoverResponse:
+    try:
+        return discover_document(request)
     except ChatConfigError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except ChatUpstreamError as error:
