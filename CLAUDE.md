@@ -75,15 +75,32 @@ Backend available at http://localhost:8000
 - Start/stop scripts for Mac, Linux, Windows in `scripts/`
 - NDA form unchanged from PL-3 (still fully client-side)
 
-### Not yet started (PL-5, PL-6, PL-7)
+### Completed (PL-5)
 
-- AI chat interface for document creation (currently a manual form, one document type only)
+- AI chat interface replaces the manual NDA form - freeform conversation, still Mutual NDA only
+- Backend calls OpenRouter's free `google/gemma-4-26b-a4b-it:free` model (confirmed $0 cost) with a strict
+  JSON schema (`response_format`) to extract field values from the conversation; one automatic retry on
+  malformed/empty model responses before surfacing a friendly error
+- Fully stateless: frontend holds chat history + field values in React state and sends both on every
+  request; backend has no session or persistence (reloading the page loses progress - that's by design,
+  document persistence is separate future scope)
+- Live preview and PDF download unchanged from PL-3/PL-4, now driven by AI-extracted fields instead of
+  manual typing
+- Requires an `OPENROUTER_API_KEY` in a gitignored `.env` file at the project root (see `.env.example`);
+  start scripts pass it to the container via `--env-file .env` and fail fast with a clear message if
+  `.env` is missing
+
+### Not yet started (PL-6, PL-7)
+
 - Support for the other 7 document types already present in `data/templates/`
 - Functional auth endpoints (signup/signin/signout, sessions) and document persistence
 
 ### Current API Endpoints
 
 - `GET /api/health` - Health check
+- `GET /api/chat/greeting` - Get the AI's opening message and empty field state
+- `POST /api/chat/message` - Send the full chat history + known fields, get back the AI's reply and
+  updated fields
 
 ### Known gaps
 

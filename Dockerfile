@@ -16,6 +16,7 @@ COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY backend/app ./app
+COPY backend/data ./data
 RUN uv sync --locked --no-dev
 
 COPY --from=frontend-build /frontend/out ./static
@@ -23,4 +24,4 @@ COPY --from=frontend-build /frontend/out ./static
 ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
