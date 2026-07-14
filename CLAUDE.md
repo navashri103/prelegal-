@@ -8,7 +8,7 @@ The available documents are covered in the catalog.json file in the project root
 
 @catalog.json
 
-The current implementation is a technical foundation only: a Mutual NDA creator form (no AI chat yet) served as a static frontend by a FastAPI backend, with a `users` table schema in SQLite but no auth endpoints wired up yet.
+The current implementation is a technical foundation only - see Implementation Status below for what's actually built vs. still planned.
 
 ## Development process
 
@@ -60,28 +60,31 @@ Backend available at http://localhost:8000
 
 ### Completed (PL-2)
 
-- Dataset of legal document templates in `data/templates/` (8 template types + schema + manifest)
+- Dataset of 8 legal document templates in `data/templates/` (manifest + JSON schema), only `nda.json` is wired up to the frontend so far
 
 ### Completed (PL-3)
 
-- Mutual NDA creator prototype: client-side form with live preview and PDF download (frontend only, no backend)
+- Mutual NDA creator: client-side React form with live preview and PDF download (jspdf) - no backend involved
 
 ### Completed (PL-4)
 
-- Docker multi-stage build (Node frontend build stage + Python/uv backend runtime stage)
+- Docker multi-stage build (Node build stage for the frontend + Python/uv runtime stage for the backend)
 - FastAPI backend in `backend/` with SQLite recreated from scratch on every container start
-- `users` table schema only (id, email, password_hash, created_at) - no auth endpoints yet, that's future work
+- `users` table schema only (id, email, password_hash, created_at) - no signup/signin endpoints yet
 - Next.js static export (`output: "export"`) served by FastAPI at localhost:8000
-- Start/stop scripts for Mac, Linux, Windows (`scripts/`)
-- Mutual NDA form unchanged from PL-3 (client-side, no backend wiring yet)
+- Start/stop scripts for Mac, Linux, Windows in `scripts/`
+- NDA form unchanged from PL-3 (still fully client-side)
 
 ### Not yet started (PL-5, PL-6, PL-7)
 
-- AI chat interface for document creation
-- Support for document types beyond the Mutual NDA
-- Functional user authentication (signup/signin/signout endpoints, JWT sessions)
-- Document persistence and a "My Documents" view
+- AI chat interface for document creation (currently a manual form, one document type only)
+- Support for the other 7 document types already present in `data/templates/`
+- Functional auth endpoints (signup/signin/signout, sessions) and document persistence
 
 ### Current API Endpoints
 
 - `GET /api/health` - Health check
+
+### Known gaps
+
+- This file references `@catalog.json` at the project root, but no such file exists - the closest thing is `data/templates/index.json` (from PL-2), which isn't a root-level catalog
