@@ -1,104 +1,64 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowsClockwise,
   DownloadSimple,
   FileText,
+  PaperPlaneTilt,
   ShieldCheck,
 } from "@phosphor-icons/react/ssr";
-import { fillTemplateBody, type Template, type TemplateField } from "@/lib/nda-template";
+import { fillTemplateBody, type Template } from "@/lib/nda-template";
 import ThemeToggle from "./theme-toggle";
 
 type FieldValues = Record<string, string>;
+type ChatRole = "user" | "assistant";
+type ChatMessage = { role: ChatRole; content: string };
+type ChatApiResponse = { reply: string; fields: Record<string, string | null> };
 
-const FIELD_GROUPS: { title: string; keys: string[] }[] = [
-  { title: "Effective Date", keys: ["effective_date"] },
-  {
-    title: "Party A",
-    keys: ["party_a_name", "party_a_address", "party_a_signatory_name", "party_a_signatory_title"],
-  },
-  {
-    title: "Party B",
-    keys: ["party_b_name", "party_b_address", "party_b_signatory_name", "party_b_signatory_title"],
-  },
-  {
-    title: "Agreement Terms",
-    keys: ["purpose", "term_years", "governing_state", "governing_county"],
-  },
-];
+function emptyFieldValues(template: Template): FieldValues {
+  return Object.fromEntries(template.fields.map((field) => [field.key, ""]));
+}
 
-function FieldInput({
-  field,
-  value,
-  onChange,
-}: {
-  field: TemplateField;
-  value: string;
-  onChange: (key: string, value: string) => void;
-}) {
-  const commonProps = {
-    id: field.key,
-    name: field.key,
-    value,
-    placeholder: field.placeholder,
-    required: field.required,
-    onChange: (
-      e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-    ) => onChange(field.key, e.target.value),
-    className:
-      "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
-  };
-
-  const isFullWidth = field.type === "textarea";
-
-  return (
-    <div className={`flex flex-col gap-1.5 ${isFullWidth ? "sm:col-span-2" : ""}`}>
-      <label htmlFor={field.key} className="text-sm font-medium text-foreground">
-        {field.label}
-        {field.required && (
-          <span className="ml-0.5 text-destructive" aria-hidden="true">
-            *
-          </span>
-        )}
-        {!field.required && (
-          <span className="ml-1.5 text-xs font-normal text-muted-foreground">optional</span>
-        )}
-      </label>
-      {field.type === "textarea" ? (
-        <textarea {...commonProps} rows={2} />
-      ) : (
-        <input
-          {...commonProps}
-          type={
-            field.type === "number"
-              ? "number"
-              : field.type === "date"
-                ? "date"
-                : field.type === "email"
-                  ? "email"
-                  : "text"
-          }
-        />
-      )}
-    </div>
-  );
+function nullableToFieldValues(fields: Record<string, string | null>): FieldValues {
+  return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value ?? ""]));
 }
 
 export default function NdaCreator({ template }: { template: Template }) {
-  const [values, setValues] = useState<FieldValues>(() =>
-    Object.fromEntries(template.fields.map((field) => [field.key, ""]))
-  );
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [values, setValues] = useState<FieldValues>(() => emptyFieldValues(template));
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
 
-  const fieldsByKey = useMemo(
-    () => new Map(template.fields.map((field) => [field.key, field])),
-    [template.fields]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/chat/greeting");
+        if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+        const data: ChatApiResponse = await response.json();
+        if (cancelled) return;
+        setMessages([{ role: "assistant", content: data.reply }]);
+        setValues(nullableToFieldValues(data.fields));
+      } catch {
+        if (cancelled) return;
+        setError("Couldn't reach the assistant. Please refresh the page to try again.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const handleChange = (key: string, value: string) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
-  };
+  useEffect(() => {
+    const container = threadRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+  }, [messages]);
 
   const missingRequiredFields = useMemo(
     () => template.fields.filter((field) => field.required && !values[field.key]?.trim()),
@@ -110,8 +70,41 @@ export default function NdaCreator({ template }: { template: Template }) {
     [values, template.body, template.fields]
   );
 
+  const sendMessage = async (content: string) => {
+    const nextMessages: ChatMessage[] = [...messages, { role: "user", content }];
+    setMessages(nextMessages);
+    setIsSending(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/chat/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages, fields: values }),
+      });
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const data: ChatApiResponse = await response.json();
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+      setValues(nullableToFieldValues(data.fields));
+    } catch {
+      setError("Something went wrong sending that message. Please try again.");
+    } finally {
+      setIsSending(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || isSending) return;
+    setInput("");
+    void sendMessage(trimmed);
+  };
+
   const handleDownload = async () => {
-    setIsGenerating(true);
+    setIsGeneratingPdf(true);
     try {
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "pt", format: "letter" });
@@ -140,7 +133,7 @@ export default function NdaCreator({ template }: { template: Template }) {
 
       doc.save("mutual-nda.pdf");
     } finally {
-      setIsGenerating(false);
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -163,47 +156,73 @@ export default function NdaCreator({ template }: { template: Template }) {
         <ThemeToggle />
       </header>
 
-      <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
-        <form
-          className="flex flex-col gap-6 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          {FIELD_GROUPS.map((group) => (
-            <fieldset key={group.title} className="flex flex-col gap-4">
-              <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {group.title}
-              </legend>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {group.keys.map((key) => {
-                  const field = fieldsByKey.get(key);
-                  if (!field) return null;
-                  return (
-                    <FieldInput
-                      key={field.key}
-                      field={field}
-                      value={values[field.key]}
-                      onChange={handleChange}
-                    />
-                  );
-                })}
+      <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-2 lg:items-stretch">
+        <div className="flex h-[32rem] flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7 lg:h-[calc(100vh-13rem)]">
+          <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
+                  }`}
+                >
+                  {message.content}
+                </div>
               </div>
-            </fieldset>
-          ))}
+            ))}
+            {isSending && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-2 rounded-lg bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
+                  <ArrowsClockwise size={14} weight="bold" className="animate-spin" />
+                  Thinking…
+                </div>
+              </div>
+            )}
+          </div>
 
-          <div className="flex flex-col gap-2 border-t border-border pt-5">
+          {error && <p className="text-xs text-destructive">{error}</p>}
+
+          <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-border pt-4">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message…"
+              disabled={isSending}
+              autoFocus
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+            />
+            <button
+              type="submit"
+              disabled={isSending || !input.trim()}
+              aria-label="Send message"
+              className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+            >
+              <PaperPlaneTilt size={18} weight="fill" />
+            </button>
+          </form>
+
+          <div className="flex flex-col gap-2">
             {missingRequiredFields.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                Fill in all required fields to enable download ({missingRequiredFields.length}{" "}
-                remaining).
+                {missingRequiredFields.length} more required field
+                {missingRequiredFields.length === 1 ? "" : "s"} to fill in before you can
+                download.
               </p>
             )}
             <button
               type="button"
               onClick={handleDownload}
-              disabled={missingRequiredFields.length > 0 || isGenerating}
+              disabled={missingRequiredFields.length > 0 || isGeneratingPdf}
               className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             >
-              {isGenerating ? (
+              {isGeneratingPdf ? (
                 <>
                   <ArrowsClockwise size={18} weight="bold" className="animate-spin" />
                   Generating PDF…
@@ -216,18 +235,18 @@ export default function NdaCreator({ template }: { template: Template }) {
               )}
             </button>
           </div>
-        </form>
+        </div>
 
-        <div className="flex flex-col gap-3 lg:sticky lg:top-10">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <div className="flex h-[32rem] flex-col gap-3 lg:sticky lg:top-10 lg:h-[calc(100vh-13rem)]">
+          <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-muted-foreground">
             <FileText size={18} />
             Live preview
           </div>
-          <div className="rounded-xl border border-border bg-paper p-8 font-serif text-base leading-7 whitespace-pre-wrap text-paper-foreground shadow-md sm:p-10">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-paper p-8 font-serif text-base leading-7 whitespace-pre-wrap text-paper-foreground shadow-md sm:p-10">
             {filledBody}
           </div>
           {template.disclaimer && (
-            <p className="text-xs leading-relaxed text-muted-foreground">{template.disclaimer}</p>
+            <p className="shrink-0 text-xs leading-relaxed text-muted-foreground">{template.disclaimer}</p>
           )}
         </div>
       </div>
