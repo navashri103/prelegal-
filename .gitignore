@@ -19,13 +19,23 @@ npm-debug.log*
 # Dependencies
 node_modules/
 venv/
+.venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Build output
 dist/
 build/
+out/
 *.egg-info/
+
+# SQLite database (recreated fresh on each container start)
+*.db
+backend/static/
 
 # Claude Code local overrides (kept out of the shared project config)
 .claude/settings.local.json
+
+# Local gstack browser-testing cache/logs
+.gstack/
