@@ -32,7 +32,7 @@ export default function NdaCreator({ template }: { template: Template }) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const threadEndRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +55,9 @@ export default function NdaCreator({ template }: { template: Template }) {
   }, []);
 
   useEffect(() => {
-    threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = threadRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   const missingRequiredFields = useMemo(
@@ -154,9 +156,9 @@ export default function NdaCreator({ template }: { template: Template }) {
         <ThemeToggle />
       </header>
 
-      <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7">
-          <div className="flex max-h-[28rem] min-h-[20rem] flex-col gap-3 overflow-y-auto pr-1">
+      <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-2 lg:items-stretch">
+        <div className="flex h-[32rem] flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7 lg:h-[calc(100vh-13rem)]">
+          <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -181,7 +183,6 @@ export default function NdaCreator({ template }: { template: Template }) {
                 </div>
               </div>
             )}
-            <div ref={threadEndRef} />
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -236,16 +237,16 @@ export default function NdaCreator({ template }: { template: Template }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 lg:sticky lg:top-10">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <div className="flex h-[32rem] flex-col gap-3 lg:sticky lg:top-10 lg:h-[calc(100vh-13rem)]">
+          <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-muted-foreground">
             <FileText size={18} />
             Live preview
           </div>
-          <div className="rounded-xl border border-border bg-paper p-8 font-serif text-base leading-7 whitespace-pre-wrap text-paper-foreground shadow-md sm:p-10">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-paper p-8 font-serif text-base leading-7 whitespace-pre-wrap text-paper-foreground shadow-md sm:p-10">
             {filledBody}
           </div>
           {template.disclaimer && (
-            <p className="text-xs leading-relaxed text-muted-foreground">{template.disclaimer}</p>
+            <p className="shrink-0 text-xs leading-relaxed text-muted-foreground">{template.disclaimer}</p>
           )}
         </div>
       </div>
