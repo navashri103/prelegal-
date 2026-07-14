@@ -139,8 +139,72 @@ def test_response_schema_covers_all_template_fields():
     field_keys = {field["key"] for field in template["fields"]}
     assert field_keys.issubset(schema["properties"].keys())
     assert "reply" in schema["properties"]
-    assert set(schema["required"]) == field_keys | {"reply"}
+    assert set(schema["required"]) == field_keys | {"reply", "requested_different_document"}
     assert schema["additionalProperties"] is False
+
+
+def test_response_schema_requested_different_document_excludes_current_template():
+    from app.chat import _response_schema
+
+    template = load_template("nda")
+    schema = _response_schema(template)["json_schema"]["schema"]
+
+    allowed = schema["properties"]["requested_different_document"]["enum"]
+    assert "nda" not in allowed
+    assert "rental_agreement" in allowed
+
+
+def test_get_chat_reply_returns_suggested_template_when_llm_requests_a_different_document(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    fields = empty_fields("nda")
+    llm_payload = {
+        "reply": "This assistant only drafts NDAs - want to start a rental agreement instead?",
+        "requested_different_document": "rental_agreement",
+        **fields,
+    }
+
+    with patch("app.chat.httpx.post", return_value=_mock_openrouter_response(llm_payload)):
+        result = get_chat_reply(
+            "nda",
+            ChatRequest(messages=[ChatMessage(role="user", content="I need a rental agreement")], fields=fields),
+        )
+
+    assert result.suggested_template_id == "rental_agreement"
+    assert result.reply == llm_payload["reply"]
+
+
+def test_get_chat_reply_ignores_hallucinated_requested_different_document(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    fields = empty_fields("nda")
+    llm_payload = {
+        "reply": "Got it, thanks!",
+        "requested_different_document": "not-a-real-template-id",
+        **fields,
+    }
+
+    with patch("app.chat.httpx.post", return_value=_mock_openrouter_response(llm_payload)):
+        result = get_chat_reply(
+            "nda", ChatRequest(messages=[ChatMessage(role="user", content="hi")], fields=fields)
+        )
+
+    assert result.suggested_template_id is None
+
+
+def test_get_chat_reply_ignores_requested_different_document_matching_current_template(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    fields = empty_fields("nda")
+    llm_payload = {
+        "reply": "Got it, thanks!",
+        "requested_different_document": "nda",
+        **fields,
+    }
+
+    with patch("app.chat.httpx.post", return_value=_mock_openrouter_response(llm_payload)):
+        result = get_chat_reply(
+            "nda", ChatRequest(messages=[ChatMessage(role="user", content="hi")], fields=fields)
+        )
+
+    assert result.suggested_template_id is None
 
 
 def test_ensure_follow_up_appends_question_when_required_fields_missing():

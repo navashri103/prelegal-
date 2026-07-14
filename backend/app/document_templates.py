@@ -26,3 +26,15 @@ def load_template(template_id: str) -> dict:
 
 def empty_fields(template_id: str) -> dict[str, None]:
     return {field["key"]: None for field in load_template(template_id)["fields"]}
+
+
+def missing_required_fields(template: dict, fields: dict[str, str | None]) -> list[dict]:
+    return [
+        field
+        for field in template["fields"]
+        if field["required"] and not (fields.get(field["key"]) or "").strip()
+    ]
+
+
+def all_template_titles() -> list[dict]:
+    return [{"id": entry["id"], "title": entry["title"]} for entry in load_manifest()]

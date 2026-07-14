@@ -9,6 +9,6 @@ fi
 
 docker build -t prelegal .
 docker rm -f prelegal >/dev/null 2>&1 || true
-docker run -d --name prelegal -p 8000:8000 --env-file .env prelegal
+docker run -d --name prelegal -p 8000:8000 -v prelegal-db:/app/db --env-file .env prelegal
 
 echo "Prelegal is starting at http://localhost:8000"

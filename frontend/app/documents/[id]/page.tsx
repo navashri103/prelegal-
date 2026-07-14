@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { loadTemplate, loadTemplateManifest } from "@/lib/template-loader";
 import DocumentCreator from "./document-creator";
@@ -22,7 +23,12 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   try {
     const template = loadTemplate(id);
-    return <DocumentCreator template={template} />;
+    const templates = loadTemplateManifest();
+    return (
+      <Suspense>
+        <DocumentCreator template={template} templates={templates} />
+      </Suspense>
+    );
   } catch {
     notFound();
   }
