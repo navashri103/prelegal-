@@ -1,9 +1,32 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  ArrowsClockwise,
+  DownloadSimple,
+  FileText,
+  ShieldCheck,
+} from "@phosphor-icons/react/ssr";
 import { fillTemplateBody, type Template, type TemplateField } from "@/lib/nda-template";
+import ThemeToggle from "./theme-toggle";
 
 type FieldValues = Record<string, string>;
+
+const FIELD_GROUPS: { title: string; keys: string[] }[] = [
+  { title: "Effective Date", keys: ["effective_date"] },
+  {
+    title: "Party A",
+    keys: ["party_a_name", "party_a_address", "party_a_signatory_name", "party_a_signatory_title"],
+  },
+  {
+    title: "Party B",
+    keys: ["party_b_name", "party_b_address", "party_b_signatory_name", "party_b_signatory_title"],
+  },
+  {
+    title: "Agreement Terms",
+    keys: ["purpose", "term_years", "governing_state", "governing_county"],
+  },
+];
 
 function FieldInput({
   field,
@@ -24,21 +47,38 @@ function FieldInput({
       e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => onChange(field.key, e.target.value),
     className:
-      "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100",
+      "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
   };
 
+  const isFullWidth = field.type === "textarea";
+
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={field.key} className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+    <div className={`flex flex-col gap-1.5 ${isFullWidth ? "sm:col-span-2" : ""}`}>
+      <label htmlFor={field.key} className="text-sm font-medium text-foreground">
         {field.label}
-        {field.required && <span className="ml-0.5 text-red-500">*</span>}
+        {field.required && (
+          <span className="ml-0.5 text-destructive" aria-hidden="true">
+            *
+          </span>
+        )}
+        {!field.required && (
+          <span className="ml-1.5 text-xs font-normal text-muted-foreground">optional</span>
+        )}
       </label>
       {field.type === "textarea" ? (
-        <textarea {...commonProps} rows={3} />
+        <textarea {...commonProps} rows={2} />
       ) : (
         <input
           {...commonProps}
-          type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "email" ? "email" : "text"}
+          type={
+            field.type === "number"
+              ? "number"
+              : field.type === "date"
+                ? "date"
+                : field.type === "email"
+                  ? "email"
+                  : "text"
+          }
         />
       )}
     </div>
@@ -50,6 +90,11 @@ export default function NdaCreator({ template }: { template: Template }) {
     Object.fromEntries(template.fields.map((field) => [field.key, ""]))
   );
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const fieldsByKey = useMemo(
+    () => new Map(template.fields.map((field) => [field.key, field])),
+    [template.fields]
+  );
 
   const handleChange = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -101,49 +146,88 @@ export default function NdaCreator({ template }: { template: Template }) {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10 sm:px-10">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {template.title} Creator
-        </h1>
-        <p className="max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-          {template.description}
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <ShieldCheck size={22} weight="fill" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              {template.title}
+            </h1>
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              {template.description}
+            </p>
+          </div>
+        </div>
+        <ThemeToggle />
       </header>
 
-      <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
         <form
-          className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900/40"
+          className="flex flex-col gap-6 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7"
           onSubmit={(e) => e.preventDefault()}
         >
-          {template.fields.map((field) => (
-            <FieldInput key={field.key} field={field} value={values[field.key]} onChange={handleChange} />
+          {FIELD_GROUPS.map((group) => (
+            <fieldset key={group.title} className="flex flex-col gap-4">
+              <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {group.title}
+              </legend>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {group.keys.map((key) => {
+                  const field = fieldsByKey.get(key);
+                  if (!field) return null;
+                  return (
+                    <FieldInput
+                      key={field.key}
+                      field={field}
+                      value={values[field.key]}
+                      onChange={handleChange}
+                    />
+                  );
+                })}
+              </div>
+            </fieldset>
           ))}
 
-          <div className="mt-2 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 border-t border-border pt-5">
             {missingRequiredFields.length > 0 && (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Fill in all required fields to enable download (
-                {missingRequiredFields.length} remaining).
+              <p className="text-xs text-muted-foreground">
+                Fill in all required fields to enable download ({missingRequiredFields.length}{" "}
+                remaining).
               </p>
             )}
             <button
               type="button"
               onClick={handleDownload}
               disabled={missingRequiredFields.length > 0 || isGenerating}
-              className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:disabled:bg-zinc-700"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             >
-              {isGenerating ? "Generating PDF…" : "Download as PDF"}
+              {isGenerating ? (
+                <>
+                  <ArrowsClockwise size={18} weight="bold" className="animate-spin" />
+                  Generating PDF…
+                </>
+              ) : (
+                <>
+                  <DownloadSimple size={18} weight="bold" />
+                  Download as PDF
+                </>
+              )}
             </button>
           </div>
         </form>
 
-        <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Live preview</h2>
-          <div className="flex-1 overflow-auto rounded-lg border border-zinc-200 bg-white p-6 font-serif text-sm leading-6 whitespace-pre-wrap text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
+        <div className="flex flex-col gap-3 lg:sticky lg:top-10">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <FileText size={18} />
+            Live preview
+          </div>
+          <div className="max-h-[70vh] overflow-auto rounded-xl border border-border bg-paper p-8 font-serif text-[15px] leading-7 whitespace-pre-wrap text-paper-foreground shadow-md">
             {filledBody}
           </div>
           {template.disclaimer && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">{template.disclaimer}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{template.disclaimer}</p>
           )}
         </div>
       </div>
