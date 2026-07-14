@@ -14,7 +14,7 @@ from app.document_templates import (
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "google/gemma-4-26b-a4b-it:free"
 REQUEST_TIMEOUT_SECONDS = 30
-MAX_ATTEMPTS = 2
+MAX_ATTEMPTS = 3
 
 
 class ChatMessage(BaseModel):
