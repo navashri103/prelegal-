@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { loadAllTemplates } from "@/lib/template-loader";
+import DiscoveryChat from "./discovery-chat";
 import PageHeader from "./page-header";
 
 export default function Home() {
@@ -13,7 +14,17 @@ export default function Home() {
         subtitle="Chat with an AI assistant to draft a legal document, then download it as a PDF."
       />
 
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Not sure which document you need?
+        </h2>
+        <DiscoveryChat />
+      </section>
+
       <div className="flex flex-col gap-8">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Or browse all documents
+        </h2>
         {categories.map((category) => (
           <section key={category} className="flex flex-col gap-3">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

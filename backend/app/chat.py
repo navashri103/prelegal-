@@ -4,12 +4,17 @@ import os
 import httpx
 from pydantic import BaseModel
 
-from app.document_templates import all_template_titles, load_template, missing_required_fields
+from app.document_templates import (
+    all_template_summaries,
+    all_template_titles,
+    load_template,
+    missing_required_fields,
+)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "google/gemma-4-26b-a4b-it:free"
 REQUEST_TIMEOUT_SECONDS = 30
-MAX_ATTEMPTS = 2
+MAX_ATTEMPTS = 3
 
 
 class ChatMessage(BaseModel):
@@ -28,12 +33,24 @@ class ChatResponse(BaseModel):
     suggested_template_id: str | None = None
 
 
+class DiscoverRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+class DiscoverResponse(BaseModel):
+    reply: str
+    matched_template_id: str | None = None
+
+
 class ChatConfigError(RuntimeError):
     pass
 
 
 class ChatUpstreamError(RuntimeError):
     pass
+
+
+DISCOVERY_GREETING = "Hi! What kind of document are you looking to create today?"
 
 
 def _reads_as_question(reply: str) -> bool:
@@ -169,6 +186,71 @@ def get_chat_reply(template_id: str, request: ChatRequest) -> ChatResponse:
                 )
             reply = _ensure_follow_up(template, content, reply)
             return ChatResponse(reply=reply, fields=content)
+        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as error:
+            last_error = error
+
+    raise ChatUpstreamError(
+        "The assistant had trouble responding just now. Please try again."
+    ) from last_error
+
+
+def _discovery_response_schema() -> dict:
+    ids = [entry["id"] for entry in all_template_titles()]
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "document_discovery",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "reply": {"type": "string"},
+                    "matched_template_id": {"type": ["string", "null"], "enum": [None, *ids]},
+                },
+                "required": ["reply", "matched_template_id"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def _discovery_system_prompt() -> str:
+    entries = "\n".join(
+        f"- {summary['id']}: {summary['title']} - {summary['description']}"
+        for summary in all_template_summaries()
+    )
+    return (
+        "You are a friendly assistant helping a user figure out which legal document they need. "
+        "Have a short, natural conversation - most requests are clear enough to match after one "
+        "message, so only ask a clarifying question if their request is genuinely ambiguous between "
+        "two or more of the documents below. Do not give legal advice, and do not try to fill in any "
+        "of the document's fields yourself - your only job is picking the right document type.\n\n"
+        f"Available documents:\n{entries}\n\n"
+        "Once you're confident which document matches, set matched_template_id to its id and write a "
+        "short reply confirming what you'll help them create - the app will automatically take them "
+        "to that document's chat next. If nothing above is a good match, leave matched_template_id "
+        "null and say so, and suggest they browse the full list on this page instead. If you need "
+        "more detail before you can be confident, leave matched_template_id null and ask one focused "
+        "clarifying question."
+    )
+
+
+def discover_document(request: DiscoverRequest) -> DiscoverResponse:
+    messages = [
+        {"role": "system", "content": _discovery_system_prompt()},
+        *[{"role": message.role, "content": message.content} for message in request.messages],
+    ]
+    response_format = _discovery_response_schema()
+    valid_ids = {entry["id"] for entry in all_template_titles()}
+
+    last_error: Exception | None = None
+    for _ in range(MAX_ATTEMPTS):
+        try:
+            content = _call_openrouter(messages, response_format)
+            reply = content.pop("reply")
+            matched = content.pop("matched_template_id", None)
+            matched_template_id = matched if matched in valid_ids else None
+            return DiscoverResponse(reply=reply, matched_template_id=matched_template_id)
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as error:
             last_error = error
 

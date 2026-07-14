@@ -38,3 +38,10 @@ def missing_required_fields(template: dict, fields: dict[str, str | None]) -> li
 
 def all_template_titles() -> list[dict]:
     return [{"id": entry["id"], "title": entry["title"]} for entry in load_manifest()]
+
+
+def all_template_summaries() -> list[dict]:
+    return [
+        {"id": template["id"], "title": template["title"], "description": template["description"]}
+        for template in (load_template(entry["id"]) for entry in load_manifest())
+    ]

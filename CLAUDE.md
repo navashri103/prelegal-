@@ -159,9 +159,25 @@ actually implemented:
   `document-creator.tsx`) into a shared, auth-aware `frontend/app/page-header.tsx`; fixed the
   Color Scheme section above to match the CSS tokens actually in use.
 
+### Completed (unticketed - document discovery chat)
+
+- New conversational entry point on the landing page (`frontend/app/discovery-chat.tsx`): instead of
+  clicking a document card, a user can describe what they need in free text (e.g. "I need to lease
+  my apartment") and the AI picks the matching document type. Sits above the existing category grid
+  on `/` - the grid is unchanged, this is purely an additional way in.
+- Backend: `backend/app/chat.py`'s `discover_document()` uses the same structured-JSON-schema pattern
+  as the per-document chat, with a `matched_template_id` field constrained to an enum of the real
+  template ids (or null) and re-validated server-side before being trusted - a hallucinated id is
+  coerced to null, never leaked through.
+- Deliberately scoped to type-detection only: once matched, the frontend auto-navigates to
+  `/documents/{id}/` after a short delay, where that document's existing chat starts completely
+  fresh - no field values carry over from the discovery conversation.
+
 ### Current API Endpoints
 
 - `GET /api/health` - Health check
+- `GET /api/discover/greeting` / `POST /api/discover/message` - Conversational document-type picker;
+  the message endpoint returns a `matched_template_id` (or null) alongside the reply
 - `GET /api/chat/{template_id}/greeting` - Get the AI's opening message and empty field state for a given
   document type (404 if `template_id` is unknown)
 - `POST /api/chat/{template_id}/message` - Send the full chat history + known fields for a given document
