@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
+  ArrowLeft,
   ArrowsClockwise,
   DownloadSimple,
   FileText,
   PaperPlaneTilt,
   ShieldCheck,
 } from "@phosphor-icons/react/ssr";
-import { fillTemplateBody, type Template } from "@/lib/nda-template";
-import ThemeToggle from "./theme-toggle";
+import { fillTemplateBody, type Template } from "@/lib/document-template";
+import ThemeToggle from "@/app/theme-toggle";
 
 type FieldValues = Record<string, string>;
 type ChatRole = "user" | "assistant";
@@ -24,7 +26,7 @@ function nullableToFieldValues(fields: Record<string, string | null>): FieldValu
   return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value ?? ""]));
 }
 
-export default function NdaCreator({ template }: { template: Template }) {
+export default function DocumentCreator({ template }: { template: Template }) {
   const [values, setValues] = useState<FieldValues>(() => emptyFieldValues(template));
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -38,7 +40,7 @@ export default function NdaCreator({ template }: { template: Template }) {
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch("/api/chat/greeting");
+        const response = await fetch(`/api/chat/${template.id}/greeting`);
         if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
         const data: ChatApiResponse = await response.json();
         if (cancelled) return;
@@ -52,13 +54,20 @@ export default function NdaCreator({ template }: { template: Template }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [template.id]);
 
   useEffect(() => {
     const container = threadRef.current;
     if (!container) return;
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // Runs after React commits the re-enabled (non-disabled) input, so the
+  // focus call can't race ahead of the DOM update the way it would inline
+  // in sendMessage's `finally` block.
+  useEffect(() => {
+    if (!isSending) inputRef.current?.focus();
+  }, [isSending]);
 
   const missingRequiredFields = useMemo(
     () => template.fields.filter((field) => field.required && !values[field.key]?.trim()),
@@ -76,7 +85,7 @@ export default function NdaCreator({ template }: { template: Template }) {
     setIsSending(true);
     setError(null);
     try {
-      const response = await fetch("/api/chat/message", {
+      const response = await fetch(`/api/chat/${template.id}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: nextMessages, fields: values }),
@@ -91,7 +100,6 @@ export default function NdaCreator({ template }: { template: Template }) {
       setError("Something went wrong sending that message. Please try again.");
     } finally {
       setIsSending(false);
-      inputRef.current?.focus();
     }
   };
 
@@ -131,7 +139,7 @@ export default function NdaCreator({ template }: { template: Template }) {
         cursorY += lineHeight;
       }
 
-      doc.save("mutual-nda.pdf");
+      doc.save(`${template.id}.pdf`);
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -145,6 +153,13 @@ export default function NdaCreator({ template }: { template: Template }) {
             <ShieldCheck size={22} weight="fill" />
           </span>
           <div className="flex flex-col gap-1">
+            <Link
+              href="/"
+              className="inline-flex w-fit items-center gap-1 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground"
+            >
+              <ArrowLeft size={12} weight="bold" />
+              Choose a different document
+            </Link>
             <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               {template.title}
             </h1>
@@ -157,7 +172,7 @@ export default function NdaCreator({ template }: { template: Template }) {
       </header>
 
       <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-2 lg:items-stretch">
-        <div className="flex h-[32rem] flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7 lg:h-[calc(100vh-13rem)]">
+        <div className="flex h-[32rem] flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7 lg:h-[calc(100vh-15rem)]">
           <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
             {messages.map((message, index) => (
               <div
@@ -237,7 +252,7 @@ export default function NdaCreator({ template }: { template: Template }) {
           </div>
         </div>
 
-        <div className="flex h-[32rem] flex-col gap-3 lg:sticky lg:top-10 lg:h-[calc(100vh-13rem)]">
+        <div className="flex h-[32rem] flex-col gap-3 lg:sticky lg:top-10 lg:h-[calc(100vh-15rem)]">
           <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-muted-foreground">
             <FileText size={18} />
             Live preview
