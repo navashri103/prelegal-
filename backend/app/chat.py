@@ -4,7 +4,7 @@ import os
 import httpx
 from pydantic import BaseModel
 
-from app.document_templates import load_template
+from app.document_templates import all_template_titles, load_template, missing_required_fields
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "google/gemma-4-26b-a4b-it:free"
@@ -25,6 +25,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     fields: dict[str, str | None]
+    suggested_template_id: str | None = None
 
 
 class ChatConfigError(RuntimeError):
@@ -33,14 +34,6 @@ class ChatConfigError(RuntimeError):
 
 class ChatUpstreamError(RuntimeError):
     pass
-
-
-def _missing_required_fields(template: dict, fields: dict[str, str | None]) -> list[dict]:
-    return [
-        field
-        for field in template["fields"]
-        if field["required"] and not (fields.get(field["key"]) or "").strip()
-    ]
 
 
 def _reads_as_question(reply: str) -> bool:
@@ -55,7 +48,7 @@ def _follow_up_question(missing_fields: list[dict]) -> str:
 
 
 def _ensure_follow_up(template: dict, fields: dict[str, str | None], reply: str) -> str:
-    missing = _missing_required_fields(template, fields)
+    missing = missing_required_fields(template, fields)
     if not missing or _reads_as_question(reply):
         return reply
     return f"{reply.strip()} {_follow_up_question(missing)}"
@@ -69,8 +62,13 @@ def greeting_for(template_id: str) -> str:
 
 def _response_schema(template: dict) -> dict:
     field_keys = [field["key"] for field in template["fields"]]
+    other_ids = [entry["id"] for entry in all_template_titles() if entry["id"] != template["id"]]
     properties = {"reply": {"type": "string"}}
     properties.update({key: {"type": ["string", "null"]} for key in field_keys})
+    properties["requested_different_document"] = {
+        "type": ["string", "null"],
+        "enum": [None, *other_ids],
+    }
     return {
         "type": "json_schema",
         "json_schema": {
@@ -79,7 +77,7 @@ def _response_schema(template: dict) -> dict:
             "schema": {
                 "type": "object",
                 "properties": properties,
-                "required": ["reply", *field_keys],
+                "required": ["reply", "requested_different_document", *field_keys],
                 "additionalProperties": False,
             },
         },
@@ -93,6 +91,11 @@ def _system_prompt(template: dict, known_fields: dict[str, str | None]) -> str:
         for field in template["fields"]
     )
     known = json.dumps({k: v for k, v in known_fields.items() if v}, indent=2)
+    other_entries = "\n".join(
+        f"- {entry['id']}: {entry['title']}"
+        for entry in all_template_titles()
+        if entry["id"] != template["id"]
+    )
     return (
         f"You are a friendly assistant helping a user fill out a {template['title']}. "
         "Have a natural conversation: ask about a couple of missing fields at a time, "
@@ -108,7 +111,16 @@ def _system_prompt(template: dict, known_fields: dict[str, str | None]) -> str:
         "with a direct question about one or two of the missing required fields - never end "
         "your turn with only an acknowledgement while required fields remain unknown. "
         "Once all required fields are known, tell the user the document is ready to "
-        "download using the button on the right."
+        "download using the button on the right.\n\n"
+        f"You can only help draft a {template['title']} right now. If the user's latest "
+        f"message is asking for a different kind of document instead, do not guess or "
+        f"extract {template['title']} field values from that request. Instead set "
+        "requested_different_document to the id of the closest match from the list below, "
+        "and write a short reply explaining you can't help with that here but naming the "
+        "closer match. If nothing below is a reasonable match, leave "
+        "requested_different_document null and say so in your reply. Otherwise always leave "
+        "requested_different_document null.\n\n"
+        f"Other supported documents:\n{other_entries}"
     )
 
 
@@ -143,12 +155,18 @@ def get_chat_reply(template_id: str, request: ChatRequest) -> ChatResponse:
         *[{"role": message.role, "content": message.content} for message in request.messages],
     ]
     response_format = _response_schema(template)
+    valid_other_ids = {entry["id"] for entry in all_template_titles() if entry["id"] != template_id}
 
     last_error: Exception | None = None
     for _ in range(MAX_ATTEMPTS):
         try:
             content = _call_openrouter(messages, response_format)
             reply = content.pop("reply")
+            requested_different_document = content.pop("requested_different_document", None)
+            if requested_different_document in valid_other_ids:
+                return ChatResponse(
+                    reply=reply, fields=content, suggested_template_id=requested_different_document
+                )
             reply = _ensure_follow_up(template, content, reply)
             return ChatResponse(reply=reply, fields=content)
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as error:

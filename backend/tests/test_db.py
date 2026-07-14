@@ -17,7 +17,44 @@ def test_init_db_creates_users_table(tmp_path):
     assert columns == {"id", "email", "password_hash", "created_at"}
 
 
-def test_init_db_recreates_from_scratch(tmp_path):
+def test_init_db_creates_sessions_table(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    init_db(db_path)
+
+    connection = sqlite3.connect(db_path)
+    try:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(sessions)")}
+    finally:
+        connection.close()
+
+    assert columns == {"id", "user_id", "token_hash", "created_at", "expires_at"}
+
+
+def test_init_db_creates_documents_table(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    init_db(db_path)
+
+    connection = sqlite3.connect(db_path)
+    try:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(documents)")}
+    finally:
+        connection.close()
+
+    assert columns == {
+        "id",
+        "user_id",
+        "template_id",
+        "status",
+        "fields_json",
+        "messages_json",
+        "created_at",
+        "updated_at",
+    }
+
+
+def test_init_db_is_idempotent_and_preserves_existing_rows(tmp_path):
     db_path = tmp_path / "test.db"
     init_db(db_path)
     connection = sqlite3.connect(db_path)
@@ -35,4 +72,4 @@ def test_init_db_recreates_from_scratch(tmp_path):
     finally:
         connection.close()
 
-    assert count == 0
+    assert count == 1

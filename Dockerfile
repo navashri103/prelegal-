@@ -21,7 +21,11 @@ RUN uv sync --locked --no-dev
 
 COPY --from=frontend-build /frontend/out ./static
 
+RUN mkdir -p /app/db
+VOLUME ["/app/db"]
+
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PRELEGAL_DB_PATH="/app/db/prelegal.db"
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

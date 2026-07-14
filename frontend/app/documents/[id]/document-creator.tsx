@@ -2,21 +2,34 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
-  ArrowLeft,
   ArrowsClockwise,
   DownloadSimple,
   FileText,
   PaperPlaneTilt,
-  ShieldCheck,
 } from "@phosphor-icons/react/ssr";
-import { fillTemplateBody, type Template } from "@/lib/document-template";
-import ThemeToggle from "@/app/theme-toggle";
+import { fillTemplateBody, type Template, type TemplateManifestEntry } from "@/lib/document-template";
+import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import PageHeader from "@/app/page-header";
 
 type FieldValues = Record<string, string>;
 type ChatRole = "user" | "assistant";
 type ChatMessage = { role: ChatRole; content: string };
-type ChatApiResponse = { reply: string; fields: Record<string, string | null> };
+type ChatApiResponse = {
+  reply: string;
+  fields: Record<string, string | null>;
+  suggested_template_id?: string | null;
+};
+type PersistedDocument = {
+  id: number;
+  template_id: string;
+  status: "in_progress" | "completed";
+  updated_at: string;
+  fields: Record<string, string | null>;
+  messages: ChatMessage[];
+};
 
 function emptyFieldValues(template: Template): FieldValues {
   return Object.fromEntries(template.fields.map((field) => [field.key, ""]));
@@ -26,35 +39,79 @@ function nullableToFieldValues(fields: Record<string, string | null>): FieldValu
   return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value ?? ""]));
 }
 
-export default function DocumentCreator({ template }: { template: Template }) {
+export default function DocumentCreator({
+  template,
+  templates,
+}: {
+  template: Template;
+  templates: TemplateManifestEntry[];
+}) {
+  const { status: authStatus } = useAuth();
+  const docParam = useSearchParams().get("doc");
+
   const [values, setValues] = useState<FieldValues>(() => emptyFieldValues(template));
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [documentId, setDocumentId] = useState<number | null>(null);
+  const [suggestedTemplateId, setSuggestedTemplateId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (authStatus === "loading") return;
     let cancelled = false;
-    (async () => {
+
+    const applyDocument = (doc: PersistedDocument) => {
+      if (cancelled) return;
+      setMessages(doc.messages);
+      setValues(nullableToFieldValues(doc.fields));
+      setDocumentId(doc.id);
+    };
+
+    const loadGuestGreeting = async (notice?: string) => {
       try {
-        const response = await fetch(`/api/chat/${template.id}/greeting`);
-        if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
-        const data: ChatApiResponse = await response.json();
+        const data = await apiGet<ChatApiResponse>(`/api/chat/${template.id}/greeting`);
         if (cancelled) return;
         setMessages([{ role: "assistant", content: data.reply }]);
         setValues(nullableToFieldValues(data.fields));
+        setDocumentId(null);
+        if (notice) setError(notice);
       } catch {
         if (cancelled) return;
         setError("Couldn't reach the assistant. Please refresh the page to try again.");
       }
+    };
+
+    (async () => {
+      if (docParam) {
+        try {
+          applyDocument(await apiGet<PersistedDocument>(`/api/documents/${docParam}`));
+        } catch {
+          if (!cancelled) await loadGuestGreeting("Couldn't load that saved document - starting fresh.");
+        }
+        return;
+      }
+
+      if (authStatus === "authenticated") {
+        try {
+          applyDocument(await apiPost<PersistedDocument>("/api/documents", { template_id: template.id }));
+        } catch {
+          if (!cancelled) await loadGuestGreeting();
+        }
+        return;
+      }
+
+      await loadGuestGreeting();
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [template.id]);
+  }, [template.id, authStatus, docParam]);
 
   useEffect(() => {
     const container = threadRef.current;
@@ -79,23 +136,33 @@ export default function DocumentCreator({ template }: { template: Template }) {
     [values, template.body, template.fields]
   );
 
+  const suggestedTemplate = suggestedTemplateId
+    ? templates.find((t) => t.id === suggestedTemplateId)
+    : null;
+
   const sendMessage = async (content: string) => {
     const nextMessages: ChatMessage[] = [...messages, { role: "user", content }];
     setMessages(nextMessages);
     setIsSending(true);
     setError(null);
+    setSaveFailed(false);
     try {
-      const response = await fetch(`/api/chat/${template.id}/message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages, fields: values }),
+      const data = await apiPost<ChatApiResponse>(`/api/chat/${template.id}/message`, {
+        messages: nextMessages,
+        fields: values,
       });
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
+      const updatedFields = nullableToFieldValues(data.fields);
+      const updatedMessages: ChatMessage[] = [...nextMessages, { role: "assistant", content: data.reply }];
+      setMessages(updatedMessages);
+      setValues(updatedFields);
+      setSuggestedTemplateId(data.suggested_template_id ?? null);
+      if (documentId !== null) {
+        try {
+          await apiPut(`/api/documents/${documentId}`, { fields: updatedFields, messages: updatedMessages });
+        } catch {
+          setSaveFailed(true);
+        }
       }
-      const data: ChatApiResponse = await response.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
-      setValues(nullableToFieldValues(data.fields));
     } catch {
       setError("Something went wrong sending that message. Please try again.");
     } finally {
@@ -147,29 +214,11 @@ export default function DocumentCreator({ template }: { template: Template }) {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10 sm:px-10">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <ShieldCheck size={22} weight="fill" />
-          </span>
-          <div className="flex flex-col gap-1">
-            <Link
-              href="/"
-              className="inline-flex w-fit items-center gap-1 text-xs font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground"
-            >
-              <ArrowLeft size={12} weight="bold" />
-              Choose a different document
-            </Link>
-            <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              {template.title}
-            </h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              {template.description}
-            </p>
-          </div>
-        </div>
-        <ThemeToggle />
-      </header>
+      <PageHeader
+        title={template.title}
+        subtitle={template.description}
+        backLink={{ href: "/", label: "Choose a different document" }}
+      />
 
       <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-2 lg:items-stretch">
         <div className="flex h-[32rem] flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7 lg:h-[calc(100vh-15rem)]">
@@ -200,7 +249,19 @@ export default function DocumentCreator({ template }: { template: Template }) {
             )}
           </div>
 
+          {suggestedTemplate && (
+            <Link
+              href={`/documents/${suggestedTemplate.id}`}
+              className="inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-muted px-3.5 py-2 text-sm font-medium text-foreground shadow-sm transition-colors duration-200 hover:bg-border"
+            >
+              Start a {suggestedTemplate.title} instead
+            </Link>
+          )}
+
           {error && <p className="text-xs text-destructive">{error}</p>}
+          {saveFailed && (
+            <p className="text-xs text-muted-foreground">Couldn&apos;t save your progress. Your chat will keep going, but this turn wasn&apos;t saved.</p>
+          )}
 
           <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-border pt-4">
             <input

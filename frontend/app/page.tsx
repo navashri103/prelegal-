@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ShieldCheck } from "@phosphor-icons/react/ssr";
 import { loadAllTemplates } from "@/lib/template-loader";
-import ThemeToggle from "./theme-toggle";
+import PageHeader from "./page-header";
 
 export default function Home() {
   const templates = loadAllTemplates();
@@ -9,22 +8,10 @@ export default function Home() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-6 py-10 sm:px-10">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <ShieldCheck size={22} weight="fill" />
-          </span>
-          <div className="flex flex-col gap-1">
-            <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Prelegal
-            </h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Chat with an AI assistant to draft a legal document, then download it as a PDF.
-            </p>
-          </div>
-        </div>
-        <ThemeToggle />
-      </header>
+      <PageHeader
+        title="Prelegal"
+        subtitle="Chat with an AI assistant to draft a legal document, then download it as a PDF."
+      />
 
       <div className="flex flex-col gap-8">
         {categories.map((category) => (

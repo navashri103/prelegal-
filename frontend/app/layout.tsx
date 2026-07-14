@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Source_Serif_4, Lato } from "next/font/google";
 import Script from "next/script";
+import { AuthProvider } from "@/lib/auth-context";
 import "./globals.css";
 
 const sourceSerif = Source_Serif_4({
@@ -49,7 +50,7 @@ export default function RootLayout({
         </Script>
       </head>
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
