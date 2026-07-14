@@ -18,6 +18,13 @@ export interface Template {
   body: string;
 }
 
+export interface TemplateManifestEntry {
+  id: string;
+  title: string;
+  category: string;
+  file: string;
+}
+
 export function fillTemplateBody(
   body: string,
   values: Record<string, string>,

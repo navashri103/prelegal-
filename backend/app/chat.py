@@ -1,21 +1,15 @@
 import json
 import os
-from functools import lru_cache
-from pathlib import Path
 
 import httpx
 from pydantic import BaseModel
 
-TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "data" / "templates" / "nda.json"
+from app.document_templates import load_template
+
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "google/gemma-4-26b-a4b-it:free"
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_ATTEMPTS = 2
-
-GREETING = (
-    "Hi! I'll help you draft a Mutual NDA. Let's start with the basics - "
-    "what are the names of the two parties entering into this agreement?"
-)
 
 
 class ChatMessage(BaseModel):
@@ -41,13 +35,36 @@ class ChatUpstreamError(RuntimeError):
     pass
 
 
-@lru_cache
-def load_template() -> dict:
-    return json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
+def _missing_required_fields(template: dict, fields: dict[str, str | None]) -> list[dict]:
+    return [
+        field
+        for field in template["fields"]
+        if field["required"] and not (fields.get(field["key"]) or "").strip()
+    ]
 
 
-def empty_fields() -> dict[str, None]:
-    return {field["key"]: None for field in load_template()["fields"]}
+def _reads_as_question(reply: str) -> bool:
+    return reply.strip().rstrip("\"')’”").endswith("?")
+
+
+def _follow_up_question(missing_fields: list[dict]) -> str:
+    labels = [field["label"] for field in missing_fields[:2]]
+    if len(labels) == 1:
+        return f"Could you tell me the {labels[0]}?"
+    return f"Could you tell me the {labels[0]} and {labels[1]}?"
+
+
+def _ensure_follow_up(template: dict, fields: dict[str, str | None], reply: str) -> str:
+    missing = _missing_required_fields(template, fields)
+    if not missing or _reads_as_question(reply):
+        return reply
+    return f"{reply.strip()} {_follow_up_question(missing)}"
+
+
+def greeting_for(template_id: str) -> str:
+    template = load_template(template_id)
+    intro = f"Hi! I'll help you draft your {template['title']}."
+    return _ensure_follow_up(template, {}, intro)
 
 
 def _response_schema(template: dict) -> dict:
@@ -57,7 +74,7 @@ def _response_schema(template: dict) -> dict:
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": "nda_extraction",
+            "name": f"{template['id']}_extraction",
             "strict": True,
             "schema": {
                 "type": "object",
@@ -87,6 +104,9 @@ def _system_prompt(template: dict, known_fields: dict[str, str | None]) -> str:
         "to filling out the document.\n\n"
         f"Fields to collect:\n{field_lines}\n\n"
         f"Fields already known:\n{known}\n\n"
+        "If any required field is still unknown after your reply, you must end your reply "
+        "with a direct question about one or two of the missing required fields - never end "
+        "your turn with only an acknowledgement while required fields remain unknown. "
         "Once all required fields are known, tell the user the document is ready to "
         "download using the button on the right."
     )
@@ -116,8 +136,8 @@ def _call_openrouter(messages: list[dict], response_format: dict) -> dict:
     return content
 
 
-def get_chat_reply(request: ChatRequest) -> ChatResponse:
-    template = load_template()
+def get_chat_reply(template_id: str, request: ChatRequest) -> ChatResponse:
+    template = load_template(template_id)
     messages = [
         {"role": "system", "content": _system_prompt(template, request.fields)},
         *[{"role": message.role, "content": message.content} for message in request.messages],
@@ -129,6 +149,7 @@ def get_chat_reply(request: ChatRequest) -> ChatResponse:
         try:
             content = _call_openrouter(messages, response_format)
             reply = content.pop("reply")
+            reply = _ensure_follow_up(template, content, reply)
             return ChatResponse(reply=reply, fields=content)
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as error:
             last_error = error

@@ -16,7 +16,7 @@ COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY backend/app ./app
-COPY backend/data ./data
+COPY data/ /data/
 RUN uv sync --locked --no-dev
 
 COPY --from=frontend-build /frontend/out ./static

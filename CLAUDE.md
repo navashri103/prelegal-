@@ -90,17 +90,46 @@ Backend available at http://localhost:8000
   start scripts pass it to the container via `--env-file .env` and fail fast with a clear message if
   `.env` is missing
 
-### Not yet started (PL-6, PL-7)
+### Completed (PL-6)
 
-- Support for the other 7 document types already present in `data/templates/`
+- All 8 document types from `data/templates/` are now wired up, not just NDA
+- New landing page at `/` lists every document as a card, grouped by category (from `data/templates/index.json`);
+  clicking one navigates to that document's own chat page at `/documents/{id}` (static-exported via
+  `generateStaticParams`, so all 8 pages are pre-rendered at build time)
+- Backend template loading moved to `backend/app/document_templates.py` (manifest lookup + per-id template
+  loading, `TemplateNotFoundError` → 404), separate from `backend/app/chat.py`'s LLM orchestration; both chat
+  endpoints now take `template_id` as a URL path segment: `GET /api/chat/{template_id}/greeting` and
+  `POST /api/chat/{template_id}/message`
+- `backend/data/templates/` (a manually-duplicated single-file copy) was deleted; the backend now reads
+  templates from the same root `data/templates/` the frontend already used, copied into the Docker image via
+  `COPY data/ /data/` in the backend stage
+- The AI is now guaranteed (not just prompt-instructed) to ask a follow-up question whenever a required field
+  is still missing: `chat.py`'s `_ensure_follow_up()` appends a canned question naming the next 1-2 missing
+  required fields if the model's reply doesn't already read as a question - applies to both the opening
+  greeting and every mid-conversation turn
+- Fixed a UI bug where the chat input didn't reliably regain keyboard focus after the AI replied
+  (`inputRef.current?.focus()` was called synchronously right after `setIsSending(false)`, which could race
+  ahead of React's DOM update and silently no-op on a still-disabled input); moved to a `useEffect` keyed on
+  `isSending` so it always fires after the input is actually re-enabled
+- Fixed a latent bug where the downloaded PDF was always named `mutual-nda.pdf` regardless of document type;
+  now named `{template_id}.pdf`
+- `next.config.ts` gained `trailingSlash: true` - required because the backend serves the static export via
+  Starlette's `StaticFiles(html=True)`, which only resolves `<path>/index.html` for a directory request, not
+  Next's default flat `<path>.html` files
+- Renamed `frontend/lib/nda-template.ts` → `document-template.ts` and `NdaCreator` → `DocumentCreator`
+  (moved to `frontend/app/documents/[id]/document-creator.tsx`), since neither was NDA-specific anymore
+
+### Not yet started (PL-7)
+
 - Functional auth endpoints (signup/signin/signout, sessions) and document persistence
 
 ### Current API Endpoints
 
 - `GET /api/health` - Health check
-- `GET /api/chat/greeting` - Get the AI's opening message and empty field state
-- `POST /api/chat/message` - Send the full chat history + known fields, get back the AI's reply and
-  updated fields
+- `GET /api/chat/{template_id}/greeting` - Get the AI's opening message and empty field state for a given
+  document type (404 if `template_id` is unknown)
+- `POST /api/chat/{template_id}/message` - Send the full chat history + known fields for a given document
+  type, get back the AI's reply and updated fields (404 if `template_id` is unknown)
 
 ### Known gaps
 

@@ -16,8 +16,8 @@ const lato = Lato({
 });
 
 export const metadata: Metadata = {
-  title: "Mutual NDA Creator",
-  description: "Fill in a form to generate a Mutual Non-Disclosure Agreement and download it as a PDF.",
+  title: "Prelegal — AI Legal Document Creator",
+  description: "Chat with an AI assistant to draft a legal document, then download it as a PDF.",
 };
 
 const themeInitScript = `

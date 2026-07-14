@@ -6,15 +6,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
 from app.chat import (
-    GREETING,
     ChatConfigError,
     ChatRequest,
     ChatResponse,
     ChatUpstreamError,
-    empty_fields,
     get_chat_reply,
+    greeting_for,
 )
 from app.db import init_db
+from app.document_templates import TemplateNotFoundError, empty_fields
 
 load_dotenv()
 
@@ -35,15 +35,20 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/chat/greeting")
-def chat_greeting() -> ChatResponse:
-    return ChatResponse(reply=GREETING, fields=empty_fields())
-
-
-@app.post("/api/chat/message")
-def chat_message(request: ChatRequest) -> ChatResponse:
+@app.get("/api/chat/{template_id}/greeting")
+def chat_greeting(template_id: str) -> ChatResponse:
     try:
-        return get_chat_reply(request)
+        return ChatResponse(reply=greeting_for(template_id), fields=empty_fields(template_id))
+    except TemplateNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/chat/{template_id}/message")
+def chat_message(template_id: str, request: ChatRequest) -> ChatResponse:
+    try:
+        return get_chat_reply(template_id, request)
+    except TemplateNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
     except ChatConfigError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except ChatUpstreamError as error:
