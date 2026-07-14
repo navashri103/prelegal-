@@ -223,7 +223,7 @@ export default function NdaCreator({ template }: { template: Template }) {
             <FileText size={18} />
             Live preview
           </div>
-          <div className="max-h-[70vh] overflow-auto rounded-xl border border-border bg-paper p-8 font-serif text-[15px] leading-7 whitespace-pre-wrap text-paper-foreground shadow-md">
+          <div className="rounded-xl border border-border bg-paper p-8 font-serif text-base leading-7 whitespace-pre-wrap text-paper-foreground shadow-md sm:p-10">
             {filledBody}
           </div>
           {template.disclaimer && (

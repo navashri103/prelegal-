@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { EB_Garamond, Lato } from "next/font/google";
+import { Source_Serif_4, Lato } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const ebGaramond = EB_Garamond({
-  variable: "--font-eb-garamond",
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -40,7 +40,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${ebGaramond.variable} ${lato.variable} h-full antialiased`}
+      className={`${sourceSerif.variable} ${lato.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
