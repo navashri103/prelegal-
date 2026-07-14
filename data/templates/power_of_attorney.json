@@ -1,0 +1,18 @@
+{
+  "id": "power_of_attorney",
+  "title": "General Power of Attorney",
+  "category": "Personal",
+  "description": "A document authorizing an agent to act on behalf of a principal in financial, legal, or business matters.",
+  "disclaimer": "This is a generic template provided for informational purposes only and is not a substitute for advice from a licensed attorney. Power of attorney requirements (including notarization/witnesses) vary significantly by jurisdiction.",
+  "fields": [
+    { "key": "execution_date", "label": "Execution Date", "type": "date", "required": true },
+    { "key": "principal_name", "label": "Principal Name", "type": "text", "required": true },
+    { "key": "principal_address", "label": "Principal Address", "type": "textarea", "required": true },
+    { "key": "agent_name", "label": "Agent (Attorney-in-Fact) Name", "type": "text", "required": true },
+    { "key": "agent_address", "label": "Agent Address", "type": "textarea", "required": true },
+    { "key": "powers_granted", "label": "Powers Granted", "type": "textarea", "required": true, "placeholder": "manage bank accounts, pay bills, and sign checks on my behalf" },
+    { "key": "effective_until", "label": "Effective Until (date or event)", "type": "text", "required": true, "placeholder": "revoked in writing by the Principal" },
+    { "key": "governing_state", "label": "Governing State/Jurisdiction", "type": "text", "required": true }
+  ],
+  "body": "GENERAL POWER OF ATTORNEY\n\nKNOW ALL PERSONS BY THESE PRESENTS, that I, {{principal_name}}, residing at {{principal_address}} (\"Principal\"), do hereby appoint {{agent_name}}, residing at {{agent_address}} (\"Agent\"), as my true and lawful attorney-in-fact.\n\n1. GRANT OF AUTHORITY. I grant my Agent full power and authority to {{powers_granted}}, as fully as I could do if personally present.\n\n2. DURATION. This Power of Attorney shall remain in effect until {{effective_until}}.\n\n3. GOVERNING LAW. This document shall be governed by the laws of {{governing_state}}.\n\nIN WITNESS WHEREOF, I have signed this Power of Attorney on {{execution_date}}.\n\n_______________________________\n{{principal_name}} (Principal)\n\nWitnessed/Notarized by:\n\n_______________________________"
+}

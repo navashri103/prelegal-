@@ -1,0 +1,20 @@
+{
+  "id": "rental_agreement",
+  "title": "Residential Rental/Lease Agreement",
+  "category": "Real Estate",
+  "description": "An agreement between a landlord and tenant setting out the terms for renting a residential property.",
+  "disclaimer": "This is a generic template provided for informational purposes only and is not a substitute for advice from a licensed attorney. Landlord-tenant law varies significantly by jurisdiction.",
+  "fields": [
+    { "key": "agreement_date", "label": "Agreement Date", "type": "date", "required": true },
+    { "key": "landlord_name", "label": "Landlord Name", "type": "text", "required": true },
+    { "key": "tenant_name", "label": "Tenant Name", "type": "text", "required": true },
+    { "key": "property_address", "label": "Rental Property Address", "type": "textarea", "required": true },
+    { "key": "lease_start_date", "label": "Lease Start Date", "type": "date", "required": true },
+    { "key": "lease_end_date", "label": "Lease End Date", "type": "date", "required": true },
+    { "key": "monthly_rent", "label": "Monthly Rent Amount", "type": "number", "required": true, "placeholder": "1500" },
+    { "key": "security_deposit", "label": "Security Deposit Amount", "type": "number", "required": true, "placeholder": "1500" },
+    { "key": "rent_due_day", "label": "Rent Due Day of Month", "type": "text", "required": true, "placeholder": "1st" },
+    { "key": "governing_state", "label": "Governing State/Jurisdiction", "type": "text", "required": true }
+  ],
+  "body": "RESIDENTIAL RENTAL/LEASE AGREEMENT\n\nThis Rental Agreement (\"Agreement\") is made on {{agreement_date}} between {{landlord_name}} (\"Landlord\") and {{tenant_name}} (\"Tenant\").\n\n1. PROPERTY. Landlord agrees to rent to Tenant the residential property located at {{property_address}} (the \"Property\").\n\n2. TERM. The lease term begins on {{lease_start_date}} and ends on {{lease_end_date}}.\n\n3. RENT. Tenant agrees to pay Landlord monthly rent of {{monthly_rent}}, due on the {{rent_due_day}} of each month.\n\n4. SECURITY DEPOSIT. Tenant shall pay a security deposit of {{security_deposit}} prior to move-in, refundable subject to the condition of the Property at the end of the lease term.\n\n5. USE OF PROPERTY. Tenant shall use the Property solely as a private residence and shall not sublet without Landlord's prior written consent.\n\n6. MAINTENANCE. Tenant shall maintain the Property in good condition and promptly notify Landlord of any needed repairs.\n\n7. GOVERNING LAW. This Agreement shall be governed by the laws of {{governing_state}}.\n\nIN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.\n\n_______________________________\n{{landlord_name}} (Landlord)\n\n_______________________________\n{{tenant_name}} (Tenant)"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "last_will_and_testament",
+  "title": "Last Will and Testament",
+  "category": "Personal",
+  "description": "A document setting out how a person's estate and affairs should be handled after their death, including asset distribution and executor appointment.",
+  "disclaimer": "This is a generic template provided for informational purposes only and is not a substitute for advice from a licensed attorney. Wills typically have strict execution requirements (e.g. witnesses, notarization) that vary by jurisdiction.",
+  "fields": [
+    { "key": "execution_date", "label": "Execution Date", "type": "date", "required": true },
+    { "key": "testator_name", "label": "Testator (Your) Full Name", "type": "text", "required": true },
+    { "key": "testator_address", "label": "Testator Address", "type": "textarea", "required": true },
+    { "key": "executor_name", "label": "Executor Name", "type": "text", "required": true },
+    { "key": "executor_address", "label": "Executor Address", "type": "textarea", "required": true },
+    { "key": "beneficiaries", "label": "Beneficiaries and Bequests", "type": "textarea", "required": true, "placeholder": "My spouse, John Smith, shall receive my entire estate." },
+    { "key": "guardian_name", "label": "Guardian for Minor Children (if applicable)", "type": "text", "required": false },
+    { "key": "governing_state", "label": "Governing State/Jurisdiction", "type": "text", "required": true }
+  ],
+  "body": "LAST WILL AND TESTAMENT\n\nI, {{testator_name}}, residing at {{testator_address}}, being of sound mind, do hereby declare this to be my Last Will and Testament, revoking all prior wills and codicils.\n\n1. EXECUTOR. I appoint {{executor_name}}, residing at {{executor_address}}, as the Executor of this Will.\n\n2. DISTRIBUTION OF ESTATE. I direct that my estate be distributed as follows: {{beneficiaries}}.\n\n3. GUARDIANSHIP. In the event I have minor children at the time of my death, I appoint {{guardian_name}} as guardian.\n\n4. GOVERNING LAW. This Will shall be governed by the laws of {{governing_state}}.\n\nIN WITNESS WHEREOF, I have signed this Will on {{execution_date}}, in the presence of the witnesses below.\n\n_______________________________\n{{testator_name}} (Testator)\n\nWitness 1: _______________________________\n\nWitness 2: _______________________________"
+}

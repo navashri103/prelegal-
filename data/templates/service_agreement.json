@@ -1,0 +1,19 @@
+{
+  "id": "service_agreement",
+  "title": "Service Agreement",
+  "category": "Business",
+  "description": "An agreement between a service provider and a client defining the scope, payment terms, and duration of services rendered.",
+  "disclaimer": "This is a generic template provided for informational purposes only and is not a substitute for advice from a licensed attorney.",
+  "fields": [
+    { "key": "agreement_date", "label": "Agreement Date", "type": "date", "required": true },
+    { "key": "provider_name", "label": "Service Provider Name", "type": "text", "required": true },
+    { "key": "client_name", "label": "Client Name", "type": "text", "required": true },
+    { "key": "scope_of_services", "label": "Scope of Services", "type": "textarea", "required": true },
+    { "key": "fee_amount", "label": "Fee Amount", "type": "number", "required": true, "placeholder": "5000" },
+    { "key": "payment_terms", "label": "Payment Terms", "type": "textarea", "required": true, "placeholder": "50% upfront, 50% upon completion" },
+    { "key": "start_date", "label": "Service Start Date", "type": "date", "required": true },
+    { "key": "end_date", "label": "Service End Date", "type": "date", "required": true },
+    { "key": "governing_state", "label": "Governing State/Jurisdiction", "type": "text", "required": true }
+  ],
+  "body": "SERVICE AGREEMENT\n\nThis Service Agreement (\"Agreement\") is entered into as of {{agreement_date}} by and between {{provider_name}} (\"Provider\") and {{client_name}} (\"Client\").\n\n1. SCOPE OF SERVICES. Provider agrees to perform the following services: {{scope_of_services}}.\n\n2. TERM. Services shall commence on {{start_date}} and conclude on {{end_date}}, unless terminated earlier as provided herein.\n\n3. COMPENSATION. Client agrees to pay Provider a fee of {{fee_amount}}. Payment terms: {{payment_terms}}.\n\n4. INDEPENDENT CONTRACTOR. Provider is an independent contractor and not an employee of Client.\n\n5. GOVERNING LAW. This Agreement shall be governed by the laws of {{governing_state}}.\n\nIN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.\n\n_______________________________\n{{provider_name}} (Provider)\n\n_______________________________\n{{client_name}} (Client)"
+}

@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "description": "Manifest of legal document templates available to the system. Each entry points to a template file containing the fillable fields and body text.",
+  "templates": [
+    {
+      "id": "nda",
+      "title": "Non-Disclosure Agreement (NDA)",
+      "category": "Business",
+      "file": "nda.json"
+    },
+    {
+      "id": "rental_agreement",
+      "title": "Residential Rental/Lease Agreement",
+      "category": "Real Estate",
+      "file": "rental_agreement.json"
+    },
+    {
+      "id": "employment_offer_letter",
+      "title": "Employment Offer Letter",
+      "category": "Employment",
+      "file": "employment_offer_letter.json"
+    },
+    {
+      "id": "power_of_attorney",
+      "title": "General Power of Attorney",
+      "category": "Personal",
+      "file": "power_of_attorney.json"
+    },
+    {
+      "id": "cease_and_desist_letter",
+      "title": "Cease and Desist Letter",
+      "category": "Personal",
+      "file": "cease_and_desist_letter.json"
+    },
+    {
+      "id": "last_will_and_testament",
+      "title": "Last Will and Testament",
+      "category": "Personal",
+      "file": "last_will_and_testament.json"
+    },
+    {
+      "id": "service_agreement",
+      "title": "Service Agreement",
+      "category": "Business",
+      "file": "service_agreement.json"
+    },
+    {
+      "id": "affidavit",
+      "title": "General Affidavit",
+      "category": "Personal",
+      "file": "affidavit.json"
+    }
+  ]
+}

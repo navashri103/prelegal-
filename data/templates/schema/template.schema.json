@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "template.schema.json",
+  "title": "Legal Document Template",
+  "description": "Structure of a single legal document template. The `body` contains {{field_key}} placeholders that map 1:1 to entries in `fields`, which the system fills in or lets the user edit.",
+  "type": "object",
+  "required": ["id", "title", "category", "description", "fields", "body"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique, stable identifier matching the manifest entry and the filename (without extension)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable document title."
+    },
+    "category": {
+      "type": "string",
+      "description": "Grouping used for browsing/filtering templates (e.g. Business, Personal, Real Estate, Employment)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Short summary of when/why this document is used."
+    },
+    "disclaimer": {
+      "type": "string",
+      "description": "Notice that the template is a generic starting point and not a substitute for legal advice."
+    },
+    "fields": {
+      "type": "array",
+      "description": "Ordered list of fillable fields referenced by the body via {{key}} tokens.",
+      "items": {
+        "type": "object",
+        "required": ["key", "label", "type", "required"],
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Placeholder token name, referenced in body as {{key}}."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable field label shown to the user."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["text", "textarea", "date", "number", "email"],
+            "description": "Input type hint for the form-rendering system."
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "placeholder": {
+            "type": "string",
+            "description": "Example value shown to guide user input."
+          }
+        }
+      }
+    },
+    "body": {
+      "type": "string",
+      "description": "Full document text with {{field_key}} placeholders that the system substitutes with user-provided or edited values."
+    }
+  }
+}

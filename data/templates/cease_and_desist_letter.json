@@ -1,0 +1,18 @@
+{
+  "id": "cease_and_desist_letter",
+  "title": "Cease and Desist Letter",
+  "category": "Personal",
+  "description": "A letter demanding that a recipient stop an alleged harmful or unlawful activity, often a precursor to legal action.",
+  "disclaimer": "This is a generic template provided for informational purposes only and is not a substitute for advice from a licensed attorney.",
+  "fields": [
+    { "key": "letter_date", "label": "Letter Date", "type": "date", "required": true },
+    { "key": "sender_name", "label": "Sender Name", "type": "text", "required": true },
+    { "key": "sender_address", "label": "Sender Address", "type": "textarea", "required": true },
+    { "key": "recipient_name", "label": "Recipient Name", "type": "text", "required": true },
+    { "key": "recipient_address", "label": "Recipient Address", "type": "textarea", "required": true },
+    { "key": "description_of_conduct", "label": "Description of Offending Conduct", "type": "textarea", "required": true },
+    { "key": "demand", "label": "Specific Demand", "type": "textarea", "required": true, "placeholder": "immediately cease and desist from contacting me" },
+    { "key": "compliance_deadline", "label": "Compliance Deadline", "type": "date", "required": true }
+  ],
+  "body": "CEASE AND DESIST LETTER\n\n{{letter_date}}\n\nTo: {{recipient_name}}\n{{recipient_address}}\n\nFrom: {{sender_name}}\n{{sender_address}}\n\nDear {{recipient_name}},\n\nThis letter serves as formal notice regarding the following conduct: {{description_of_conduct}}.\n\nYou are hereby demanded to {{demand}} no later than {{compliance_deadline}}. Failure to comply with this demand may result in further legal action being taken against you without additional notice, which may include seeking injunctive relief and/or monetary damages.\n\nThis letter is sent without prejudice to any and all rights and remedies available, all of which are expressly reserved.\n\nSincerely,\n\n_______________________________\n{{sender_name}}"
+}

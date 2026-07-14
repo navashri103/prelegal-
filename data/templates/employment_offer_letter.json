@@ -1,0 +1,19 @@
+{
+  "id": "employment_offer_letter",
+  "title": "Employment Offer Letter",
+  "category": "Employment",
+  "description": "A formal letter from an employer offering a candidate a position, outlining role, compensation, and start date.",
+  "disclaimer": "This is a generic template provided for informational purposes only and is not a substitute for advice from a licensed attorney or HR professional.",
+  "fields": [
+    { "key": "offer_date", "label": "Offer Date", "type": "date", "required": true },
+    { "key": "company_name", "label": "Company Name", "type": "text", "required": true },
+    { "key": "candidate_name", "label": "Candidate Name", "type": "text", "required": true },
+    { "key": "job_title", "label": "Job Title", "type": "text", "required": true },
+    { "key": "start_date", "label": "Start Date", "type": "date", "required": true },
+    { "key": "annual_salary", "label": "Annual Salary", "type": "number", "required": true, "placeholder": "75000" },
+    { "key": "employment_type", "label": "Employment Type", "type": "text", "required": true, "placeholder": "Full-time, At-will" },
+    { "key": "reporting_manager", "label": "Reporting Manager", "type": "text", "required": true },
+    { "key": "acceptance_deadline", "label": "Offer Acceptance Deadline", "type": "date", "required": true }
+  ],
+  "body": "OFFER OF EMPLOYMENT\n\n{{offer_date}}\n\nDear {{candidate_name}},\n\nOn behalf of {{company_name}}, we are pleased to offer you the position of {{job_title}}, reporting to {{reporting_manager}}. This is a {{employment_type}} position with an anticipated start date of {{start_date}}.\n\nCOMPENSATION. Your starting annual salary will be {{annual_salary}}, payable in accordance with the Company's standard payroll schedule.\n\nCONTINGENCIES. This offer is contingent upon satisfactory completion of any applicable background checks and verification of your eligibility to work.\n\nACCEPTANCE. Please indicate your acceptance of this offer by signing below and returning this letter by {{acceptance_deadline}}.\n\nWe are excited about the possibility of you joining {{company_name}} and look forward to your response.\n\nSincerely,\n\n_______________________________\nOn behalf of {{company_name}}\n\nACCEPTED:\n\n_______________________________\n{{candidate_name}}\n\nDate: _______________________"
+}

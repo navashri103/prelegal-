@@ -1,0 +1,16 @@
+{
+  "id": "affidavit",
+  "title": "General Affidavit",
+  "category": "Personal",
+  "description": "A sworn written statement of facts, voluntarily made by an affiant under oath, typically used as evidence in legal proceedings.",
+  "disclaimer": "This is a generic template provided for informational purposes only and is not a substitute for advice from a licensed attorney. Affidavits typically must be signed before a notary public.",
+  "fields": [
+    { "key": "affidavit_date", "label": "Date", "type": "date", "required": true },
+    { "key": "affiant_name", "label": "Affiant Full Name", "type": "text", "required": true },
+    { "key": "affiant_address", "label": "Affiant Address", "type": "textarea", "required": true },
+    { "key": "statement_of_facts", "label": "Statement of Facts", "type": "textarea", "required": true },
+    { "key": "governing_state", "label": "State/Jurisdiction", "type": "text", "required": true },
+    { "key": "county", "label": "County", "type": "text", "required": true }
+  ],
+  "body": "AFFIDAVIT\n\nSTATE OF {{governing_state}}\nCOUNTY OF {{county}}\n\nI, {{affiant_name}}, residing at {{affiant_address}}, being first duly sworn, depose and state as follows:\n\n{{statement_of_facts}}\n\nI declare under penalty of perjury under the laws of {{governing_state}} that the foregoing is true and correct to the best of my knowledge.\n\nExecuted on {{affidavit_date}}.\n\n_______________________________\n{{affiant_name}} (Affiant)\n\nSubscribed and sworn to before me this ____ day of __________, 20____.\n\n_______________________________\nNotary Public"
+}
